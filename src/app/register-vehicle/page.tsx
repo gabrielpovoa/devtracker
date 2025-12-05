@@ -48,7 +48,7 @@ export default function Page() {
 
 
     return (
-        <section className="p-10 text-white">
+        <section className="mt-7 md:mt-0 p-5 md:p-10 text-white">
             <Heading
                 Title="Registrar Veículo"
                 TextTransform="capitalize"

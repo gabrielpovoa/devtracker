@@ -1,239 +1,270 @@
 "use client";
 
-import { useState } from "react";
+import {useState, useEffect} from "react";
 import {
-    User, Route, Gauge, Calendar, FileText, Coins
+    User,
+    Route,
+    Gauge,
+    Calendar,
+    FileText,
+    Coins
 } from "lucide-react";
 
+import FormSection from "@/Components/Form/FormSection";
+import FormSelect from "@/Components/Form/FormSelect";
+import FormInput from "@/Components/Form/FormInput";
+import FormTextarea from "@/Components/Form/FormTextArea";
+
 type Vehicle = {
+    id: number;
     plate: string;
     model: string;
 };
 
-type ExpenseFormProps = {
-    vehicles?: Vehicle[]; // agora é opcional
-};
-
-export default function ExpenseForm({ vehicles = [] }: ExpenseFormProps) {
+export default function ExpenseForm() {
     const [selectedVehicle, setSelectedVehicle] = useState("");
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [loadingVehicles, setLoadingVehicles] = useState(true);
+    const [tipoGasto, setTipoGasto] = useState("");
 
-    // Mock para testes
-    const mockVehicles: Vehicle[] = [
-        { plate: "ABC-1234", model: "Fiat Uno" }
-    ];
 
-    // Se vehicles vier vazio, usa o mock
-    const list = vehicles.length > 0 ? vehicles : mockVehicles;
+    // ---- STATES PARA CÁLCULOS ----
+    const [kmInicial, setKmInicial] = useState<number | "">("");
+    const [kmFinal, setKmFinal] = useState<number | "">("");
+    const [kmRodados, setKmRodados] = useState("");
+
+    const [horaInicial, setHoraInicial] = useState("");
+    const [horaFinal, setHoraFinal] = useState("");
+    const [horasMovimento, setHorasMovimento] = useState("");
+
+    // 🔵 Carrega veículos cadastrados
+    useEffect(() => {
+        async function loadVehicles() {
+            try {
+                const res = await fetch("/api/vehicles");
+                if (!res.ok) return;
+
+                const data = await res.json();
+                setVehicles(data);
+            } catch {
+                console.log("Erro ao buscar veículos");
+            } finally {
+                setLoadingVehicles(false);
+            }
+        }
+
+        loadVehicles();
+    }, []);
+
+    // 🔵 CALCULAR KM RODADOS
+    useEffect(() => {
+        if (kmInicial !== "" && kmFinal !== "") {
+            const result = Number(kmFinal) - Number(kmInicial);
+
+            if (result >= 0) {
+                setKmRodados(`${result} km rodados`);
+            } else {
+                setKmRodados("Valor inválido");
+            }
+        } else {
+            setKmRodados("");
+        }
+    }, [kmInicial, kmFinal]);
+
+    // 🔵 CALCULAR HORAS EM MOVIMENTO
+    useEffect(() => {
+        if (horaInicial && horaFinal) {
+            const [h1, m1] = horaInicial.split(":").map(Number);
+            const [h2, m2] = horaFinal.split(":").map(Number);
+
+            const start = h1 * 60 + m1;
+            const end = h2 * 60 + m2;
+
+            if (end >= start) {
+                const diff = end - start;
+                const horas = Math.floor(diff / 60);
+                const minutos = diff % 60;
+
+                setHorasMovimento(`${horas}h ${minutos}min`);
+            } else {
+                setHorasMovimento("Horário inválido");
+            }
+        } else {
+            setHorasMovimento("");
+        }
+    }, [horaInicial, horaFinal]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const form = Object.fromEntries(
+            new FormData(e.target as HTMLFormElement)
+        );
+
+        const payload = {
+            colaborador: form.colaborador,
+            vehicleId: selectedVehicle,
+            tipoGasto,
+            kmInicial,
+            kmFinal,
+            kmRodados: kmRodados.replace(" km rodados", ""),
+            horaInicial,
+            horaFinal,
+            horasMovimento,
+            dia: form.dia,
+            observacao: form.observacao,
+        };
+
+        const res = await fetch("/api/expenses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+            alert("Despesa salva com sucesso!");
+        } else {
+            alert("Erro ao salvar a despesa.");
+        }
+    };
+
 
     return (
-        <div className="mt-8 bg-[#1c1f2b] rounded-2xl p-8 shadow-[0_0_25px_rgba(0,0,0,0.45)] border border-[#262b3a] text-gray-200 max-w-5xl">
+        <div className="mt-8 bg-[#1c1f2b] rounded-2xl p-8 border border-[#262b3a] text-gray-200">
+
             <h2 className="text-2xl font-semibold flex items-center gap-2 mb-8">
-                <Coins className="w-6 h-6 text-blue-400" />
+                <Coins className="w-6 h-6 text-blue-400"/>
                 Registrar Despesa
             </h2>
 
-            <form className="space-y-8">
+            <form className="space-y-10" onSubmit={handleSubmit}>
 
-                {/* ROW: Colaborador + Veículo */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {/* Colaborador */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="colaborador" className="font-medium flex items-center gap-2">
-                            <User className="w-5 h-5 text-blue-400" />
-                            Nome do Colaborador
-                        </label>
-                        <input
-                            id="colaborador"
-                            type="text"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] focus:ring-2 focus:ring-blue-500 shadow-sm outline-none text-gray-100"
-                            placeholder="Digite o nome"
-                        />
-                    </div>
-
-                    {/* Select Veículo */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="vehicle" className="font-medium flex items-center gap-2">
-                            <Route className="w-5 h-5 text-blue-400" />
-                            Veículo (Placa / Modelo)
-                        </label>
-
-                        <select
-                            id="vehicle"
-                            value={selectedVehicle}
-                            onChange={(e) => setSelectedVehicle(e.target.value)}
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                            <option className="bg-[#1c1f2b]">Selecione um veículo…</option>
-
-                            {list.map((v) => (
-                                <option key={v.plate} value={v.plate}  className="bg-[#1c1f2b]">
-                                    {v.plate} — {v.model}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                </div>
-
-                {/* KM ROW */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                    {/* KM INICIAL */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="kmInicial" className="font-medium flex items-center gap-2">
-                            <Route className="w-5 h-5 text-blue-400" />
-                            KM Inicial
-                        </label>
-
-                        <input
-                            id="kmInicial"
-                            type="number"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="0"
-                        />
-                    </div>
-
-                    {/* KM FINAL */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="kmFinal" className="font-medium flex items-center gap-2">
-                            <Route className="w-5 h-5 text-blue-400" />
-                            KM Final
-                        </label>
-
-                        <input
-                            id="kmFinal"
-                            type="number"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="0"
-                        />
-                    </div>
-
-                    {/* KM RODADOS */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="kmRodados" className="font-medium flex items-center gap-2">
-                            <Gauge className="w-5 h-5 text-blue-400" />
-                            KM Rodados
-                        </label>
-
-                        <input
-                            id="kmRodados"
-                            type="number"
-                            readOnly
-                            className="w-full p-3 rounded-lg bg-[#1c1f2b] border border-[#34394a] text-gray-400 shadow-sm"
-                            placeholder="Auto"
-                        />
-                    </div>
-                </div>
-
-                {/* HOUR ROW */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                    {/* HORA INICIAL */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="horaInicial" className="font-medium">Hora Inicial</label>
-
-                        <input
-                            id="horaInicial"
-                            type="time"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                    </div>
-
-                    {/* HORA FINAL */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="horaFinal" className="font-medium">Hora Final</label>
-
-                        <input
-                            id="horaFinal"
-                            type="time"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                    </div>
-
-                    {/* HORAS EM MOVIMENTO */}
-                    <div className="flex flex-col gap-3">
-                        <label htmlFor="horasMovimento" className="font-medium">Horas em Movimento</label>
-
-                        <input
-                            id="horasMovimento"
-                            type="text"
-                            readOnly
-                            className="w-full p-3 rounded-lg bg-[#1c1f2b] border border-[#34394a] text-gray-400 shadow-sm"
-                            placeholder="Auto"
-                        />
-                    </div>
-                </div>
-
-                {/* DIA + TIPO DE GASTO */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                    {/* DIA */}
-                    <div className="flex flex-col gap-3">
-                        <label
-                            htmlFor="dia"
-                            className="font-medium flex items-center gap-2"
-                        >
-                            <Calendar className="w-5 h-5 text-blue-400" />
-                            Dia
-                        </label>
-
-                        <input
-                            id="dia"
-                            type="date"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                    </div>
-
-                    {/* TIPO DE GASTO */}
-                    <div className="flex flex-col gap-3">
-                        <label
-                            htmlFor="tipoGasto"
-                            className="font-medium flex items-center gap-2"
-                        >
-                            <Coins className="w-5 h-5 text-blue-400" />
-                            Tipo de Gasto
-                        </label>
-
-                        <select
-                            id="tipoGasto"
-                            className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                            <option className="bg-[#1c1f2b]">Selecione...</option>
-                            <option className="bg-[#1c1f2b]" value="pedagio">Pedágio</option>
-                            <option className="bg-[#1c1f2b]" value="abastecimento">Abastecimento</option>
-                            <option className="bg-[#1c1f2b]" value="alimentacao">Alimentação</option>
-                            <option className="bg-[#1c1f2b]" value="outro">Outro</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* OBSERVAÇÃO */}
-                <div className="flex flex-col gap-3">
-                    <label
-                        htmlFor="observacao"
-                        className="font-medium flex items-center gap-2"
-                    >
-                        <FileText className="w-5 h-5 text-blue-400" />
-                        Observação
-                    </label>
-
-                    <textarea
-                        id="observacao"
-                        rows={3}
-                        className="w-full p-3 rounded-lg bg-[#262b3a] border border-[#34394a] shadow-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400"
-                        placeholder="Escreva observações adicionais..."
+                {/* --- COLABORADOR + VEÍCULO --- */}
+                <FormSection columns={2}>
+                    <FormInput
+                        id="colaborador"
+                        label="Nome do Colaborador"
+                        name="colaborador"
+                        icon={<User className="w-5 h-5 text-blue-400"/>}
+                        placeholder="Digite o nome"
                     />
-                </div>
 
-                {/* BUTTON */}
+                    <FormSelect
+                        id="vehicle"
+                        label="Veículo (Placa/Modelo)"
+                        icon={<Route className="w-5 h-5 text-blue-400"/>}
+                        value={selectedVehicle}
+                        onChange={(e) => setSelectedVehicle(e.target.value)}
+                        options={[
+                            {value: "", label: loadingVehicles ? "Carregando..." : "Selecione um veículo…"},
+                            ...vehicles.map((v) => ({
+                                value: v.id.toString(),
+                                label: `${v.plate} — ${v.model}`
+                            }))
+                        ]}
+                    />
+                </FormSection>
+
+                {/* --- KM ROW --- */}
+                <FormSection columns={3}>
+                    <FormInput
+                        id="kmInicial"
+                        label="KM Inicial"
+                        name="kmInicial"
+                        type="number"
+                        value={kmInicial}
+                        onChange={(e) => setKmInicial(e.target.value ? Number(e.target.value) : "")}
+                        icon={<Route className="text-blue-300"/>}
+                    />
+
+                    <FormInput
+                        id="kmFinal"
+                        label="KM Final"
+                        name="kmFinal"
+                        type="number"
+                        value={kmFinal}
+                        onChange={(e) => setKmFinal(e.target.value ? Number(e.target.value) : "")}
+                        icon={<Route className="text-blue-300"/>}
+                    />
+
+                    <FormInput
+                        id="kmRodados"
+                        label="KM Rodados"
+                        name="kmRodados"
+                        value={kmRodados}
+                        icon={<Gauge className="text-purple-300"/>}
+                        readOnly
+                    />
+                </FormSection>
+
+                {/* --- HORÁRIOS --- */}
+                <FormSection columns={3}>
+                    <FormInput
+                        id="horaInicial"
+                        label="Hora Inicial"
+                        name="horaInicial"
+                        type="time"
+                        value={horaInicial}
+                        onChange={(e) => setHoraInicial(e.target.value)}
+                    />
+
+                    <FormInput
+                        id="horaFinal"
+                        label="Hora Final"
+                        name="horaFinal"
+                        type="time"
+                        value={horaFinal}
+                        onChange={(e) => setHoraFinal(e.target.value)}
+                    />
+
+                    <FormInput
+                        id="horasMovimento"
+                        label="Horas em Movimento"
+                        name="horasMovimento"
+                        value={horasMovimento}
+                        readOnly
+                    />
+                </FormSection>
+
+                {/* --- DIA + TIPO DE GASTO --- */}
+                <FormSection columns={2}>
+                    <FormInput
+                        id="dia"
+                        label="Dia"
+                        name="dia"
+                        type="date"
+                        icon={<Calendar className="text-blue-400"/>}
+                    />
+
+                    <FormSelect
+                        id="tipoGasto"
+                        label="Tipo de Gasto"
+                        icon={<Coins className="text-yellow-400"/>}
+                        value={tipoGasto}
+                        onChange={(e) => setTipoGasto(e.target.value)}
+                        options={[
+                            {value: "", label: "Selecione..."},
+                            {value: "pedagio", label: "Pedágio"},
+                            {value: "abastecimento", label: "Abastecimento"},
+                            {value: "alimentacao", label: "Alimentação"},
+                            {value: "outro", label: "Outro"},
+                        ]}
+                    />
+
+                </FormSection>
+
+                {/* --- OBSERVAÇÃO --- */}
+                <FormTextarea
+                    id="observacao"
+                    label="Observação"
+                    icon={<FileText className="text-blue-400"/>}
+                    placeholder="Escreva observações adicionais..."
+                />
+
                 <button
-                    type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl text-lg font-medium text-white shadow-lg transition"
-                >
+                    className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl text-lg font-medium text-white shadow-lg">
                     Salvar Despesa
                 </button>
-
             </form>
         </div>
     );

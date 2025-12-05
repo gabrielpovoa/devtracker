@@ -10,7 +10,7 @@ const Sidebar = () => {
     return (
         <>
             {/* HEADER MOBILE */}
-            <header className="md:hidden fixed top-0 left-0 w-full bg-[#0C120C] border-b border-gray-800/50 flex items-center justify-between px-6 py-4 z-50">
+            <header className="md:hidden fixed top-0 left-0 w-full bg-[#1D3557] border-b border-gray-800/50 flex items-center justify-between px-6 py-4 z-50">
                 <Link className="text-white font-semibold text-lg" href="/">DevTracker</Link>
 
                 <button onClick={() => setOpen(true)} className="text-gray-300">
@@ -32,7 +32,7 @@ const Sidebar = () => {
             {/* SIDEBAR */}
             <aside
                 className={`
-                    bg-[#0C120C] border-r border-gray-800/50 shadow-lg
+                    bg-[#1D3557] border-r border-gray-800/50 shadow-lg
                     flex flex-col py-8
                     fixed top-0 h-full w-64 z-50 transform transition-transform duration-300
 

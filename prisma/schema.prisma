@@ -19,16 +19,19 @@ model Vehicle {
 }
 
 model Expense {
-  id            Int       @id @default(autoincrement())
-  colaborador   String
-  vehicleId     Int
-  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id])
-  kmSaida       Int
-  kmRetorno     Int
-  horaSaida     String
-  horaRetorno   String
-  data          DateTime
-  tipoDeGasto   String
-  observacao    String?
-  createdAt     DateTime  @default(now())
+  id             Int       @id @default(autoincrement())
+  colaborador    String
+  vehicleId      Int
+  vehicle        Vehicle   @relation(fields: [vehicleId], references: [id])  // ← VOLTOU!
+
+  tipoGasto      String
+  kmInicial      Int?
+  kmFinal        Int?
+  kmRodados      Int?
+  horaInicial    String?
+  horaFinal      String?
+  horasMovimento String?
+  dia            DateTime
+  observacao     String?
+  createdAt      DateTime @default(now())
 }
